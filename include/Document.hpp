@@ -9,7 +9,6 @@ class Document
     using Id = uint64_t;
 
     Document(Id id, std::string name, std::string text) : id_(id), name_(std::move(name)), text_(std::move(text)) {}
-
     Document(const Document&) = default;
     Document(Document&&) = default;
     Document& operator=(const Document&) = default;
