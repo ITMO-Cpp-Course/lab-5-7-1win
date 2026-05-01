@@ -3,15 +3,15 @@
 #include <cctype>
 
 
-std::vector<std::string> DocumentBuilder::tokenize(const std::string& text) {
+std::vector<std::string> DocumentBuilder::tokenize(const std::string &text) {
     std::vector<std::string> tokens;
     tokens.reserve(text.size() / 5);
 
     std::string token;
     token.reserve(32);
 
-    for (char ch : text) {
-        if (std::isalnum(static_cast<unsigned char>(ch))) { //функция из <cctype> проверяет на алфавитно цифрвой символ, явное преобразование в unsigned char
+    for (char ch: text) {
+        if (std::isalnum(static_cast<unsigned char>(ch))) {
             token += ch;
         } else {
             if (!token.empty()) {
