@@ -18,14 +18,16 @@ class InvertedIndex
   public:
     InvertedIndex() = default;
 
+    InvertedIndex(const InvertedIndex&) = default;
+    InvertedIndex& operator=(const InvertedIndex&) = default;
+
+    InvertedIndex(InvertedIndex&&) = default;
+    InvertedIndex& operator=(InvertedIndex&&) = default;
+
     void addDocument(Document doc);
-
     [[nodiscard]] bool removeDocument(Document::Id id);
-
     [[nodiscard]] std::vector<SearchResult> search(const std::string& word) const;
-
     [[nodiscard]] std::size_t wordCount(Document::Id id, const std::string& word) const;
-
     [[nodiscard]] std::size_t size() const noexcept
     {
         return documents_.size();
