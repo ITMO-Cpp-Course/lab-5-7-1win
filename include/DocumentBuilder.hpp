@@ -9,6 +9,11 @@ class DocumentBuilder
   public:
     DocumentBuilder() = default;
 
+    DocumentBuilder(const DocumentBuilder&) = delete;
+    DocumentBuilder(DocumentBuilder&&) = delete;
+    DocumentBuilder& operator=(const DocumentBuilder&) = delete;
+    DocumentBuilder& operator=(DocumentBuilder&&) = delete;
+
     DocumentBuilder& setName(std::string name)
     {
         name_ = std::move(name);

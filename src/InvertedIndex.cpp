@@ -1,10 +1,20 @@
 #include "InvertedIndex.hpp"
 #include "DocumentBuilder.hpp"
 #include <algorithm>
+#include <stdexcept>
 
 void InvertedIndex::addDocument(Document doc)
 {
     Document::Id id = doc.id();
+
+    if (documents_.contains(id))
+    {
+        if (!removeDocument(id))
+        {
+            throw std::runtime_error("Failed to remove existing document with ID: " + std::to_string(id));
+        }
+    }
+
     auto tokens = DocumentBuilder::tokenize(doc.text());
 
     documents_.emplace(id, std::move(doc));
