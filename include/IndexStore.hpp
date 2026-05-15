@@ -20,12 +20,9 @@ class IndexStore
     Result<void> removeDocument(Document::Id id);
 
     [[nodiscard]] std::vector<SearchResult> search(const std::string& word) const;
-
     [[nodiscard]] std::size_t wordCount(Document::Id id, const std::string& word) const;
-
     [[nodiscard]] std::size_t size() const noexcept;
     [[nodiscard]] bool contains(Document::Id id) const noexcept;
-
     [[nodiscard]] UpdateTransaction beginTransaction();
 
   private:

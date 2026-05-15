@@ -7,7 +7,7 @@ class IndexStore;
 
 class UpdateTransaction
 {
-public:
+  public:
     explicit UpdateTransaction(IndexStore& store);
 
     UpdateTransaction(const UpdateTransaction&) = delete;
@@ -30,7 +30,7 @@ public:
         return committed_;
     }
 
-private:
+  private:
     IndexStore& store_;
     InvertedIndex workingCopy_;
 

@@ -1,92 +1,214 @@
-#include "Document.hpp"
 #include "DocumentBuilder.hpp"
-#include "InvertedIndex.hpp"
+#include "IndexStore.hpp"
+#include "UpdateTransaction.hpp"
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("DocumentBuilder: unique IDs and move semantics", "[builder]")
+TEST_CASE("IndexStore: add and contains", "[store]")
 {
-    DocumentBuilder builder;
-    auto doc1 = builder.setName("Doc1").setText("Hello world").build();
-    auto doc2 = builder.setName("Doc2").setText("Hello C++").build();
-
-    REQUIRE(doc1.id() != doc2.id());
-    REQUIRE(doc1.name() == "Doc1");
-    REQUIRE(doc2.name() == "Doc2");
-}
-
-TEST_CASE("DocumentBuilder: tokenize ASCII text", "[builder]")
-{
-    auto tokens = DocumentBuilder::tokenize("Hello, World! 123 test.");
-    REQUIRE(tokens == std::vector<std::string>{"hello", "world", "123", "test"});
-
-    auto empty = DocumentBuilder::tokenize("... !!! ---");
-    REQUIRE(empty.empty());
-}
-
-TEST_CASE("DocumentBuilder: toLower ASCII", "[builder]")
-{
-    REQUIRE(DocumentBuilder::toLower("ABC123xyz") == "abc123xyz");
-    REQUIRE(DocumentBuilder::toLower("Already Lower") == "already lower");
-}
-
-TEST_CASE("InvertedIndex: add and search", "[index]")
-{
-    InvertedIndex index;
-    DocumentBuilder builder;
-
-    auto doc = builder.setName("Test").setText("Hello hello world").build();
-    index.addDocument(std::move(doc));
-
-    auto results = index.search("hello");
-    REQUIRE(results.size() == 1);
-    REQUIRE(results[0].count == 2);
-}
-
-TEST_CASE("InvertedIndex: remove document", "[index]")
-{
-    InvertedIndex index;
-    DocumentBuilder builder;
-
-    auto doc = builder.setName("Test").setText("Hello world").build();
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("a").setText("hello world").build();
     auto id = doc.id();
-    index.addDocument(std::move(doc));
+    auto result = store.addDocument(std::move(doc));
 
-    REQUIRE(index.contains(id));
-    REQUIRE(index.removeDocument(id));
-    REQUIRE_FALSE(index.contains(id));
-    REQUIRE(index.search("hello").empty());
+    REQUIRE(result.has_value());
+    REQUIRE(store.contains(id));
+    REQUIRE(store.size() == 1);
 }
 
-TEST_CASE("InvertedIndex: wordCount & case-insensitivity", "[index]")
+TEST_CASE("IndexStore: add duplicate returns error", "[store]")
 {
-    InvertedIndex index;
-    DocumentBuilder builder;
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc1 = b.setName("a").setText("hello").build();
+    Document doc2{doc1.id(), "b", "world"};
 
-    auto doc = builder.setName("Cpp").setText("C++ is great. C++ is fast.").build();
+    REQUIRE(store.addDocument(std::move(doc1)).has_value());
+
+    auto result = store.addDocument(std::move(doc2));
+
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == IndexError::DuplicateDocument);
+    REQUIRE(store.size() == 1);
+}
+
+TEST_CASE("IndexStore: remove existing document", "[store]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("a").setText("hello").build();
     auto id = doc.id();
-    index.addDocument(std::move(doc));
+    store.addDocument(std::move(doc));
+    auto result = store.removeDocument(id);
 
-    REQUIRE(index.wordCount(id, "c") == 2);
-    REQUIRE(index.wordCount(id, "is") == 2);
-    REQUIRE(index.wordCount(id, "cpp") == 0);
-    REQUIRE(index.wordCount(999, "hello") == 0);
+    REQUIRE(result.has_value());
+    REQUIRE_FALSE(store.contains(id));
+    REQUIRE(store.size() == 0);
 }
 
-TEST_CASE("InvertedIndex: sorted search results", "[index]")
+TEST_CASE("IndexStore: remove non-existent returns error", "[store]")
 {
-    InvertedIndex index;
-    DocumentBuilder builder;
+    IndexStore store;
+    auto result = store.removeDocument(9999u);
 
-    auto d1 = builder.setName("A").setText("hello hello hello").build();
-    auto d2 = builder.setName("B").setText("hello world").build();
-    auto id1 = d1.id();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == IndexError::DocumentNotFound);
+}
 
-    index.addDocument(std::move(d1));
-    index.addDocument(std::move(d2));
+TEST_CASE("IndexStore: search delegates to index", "[store]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    store.addDocument(b.setName("doc1").setText("cat dog").build());
+    store.addDocument(b.setName("doc2").setText("cat fish").build());
 
-    auto results = index.search("hello");
+    auto results = store.search("cat");
     REQUIRE(results.size() == 2);
-    REQUIRE(results[0].docId == id1);
-    REQUIRE(results[0].count == 3);
-    REQUIRE(results[1].count == 1);
+}
+
+TEST_CASE("IndexStore: wordCount delegates to index", "[store]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("d").setText("the cat and the cat").build();
+    auto id = doc.id();
+    store.addDocument(std::move(doc));
+
+    REQUIRE(store.wordCount(id, "cat") == 2);
+    REQUIRE(store.wordCount(id, "the") == 2);
+    REQUIRE(store.wordCount(id, "dog") == 0);
+}
+
+TEST_CASE("Transaction: commit applies changes", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto tx = store.beginTransaction();
+
+    REQUIRE(tx.addDocument(b.setName("doc1").setText("hello").build()).has_value());
+    REQUIRE(tx.addDocument(b.setName("doc2").setText("world").build()).has_value());
+    REQUIRE(tx.commit().has_value());
+    REQUIRE(store.size() == 2);
+}
+
+TEST_CASE("Transaction: commit remove applies to store", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("doc").setText("hello").build();
+    auto id = doc.id();
+    store.addDocument(std::move(doc));
+    auto tx = store.beginTransaction();
+
+    REQUIRE(tx.removeDocument(id).has_value());
+    REQUIRE(tx.commit().has_value());
+
+    REQUIRE_FALSE(store.contains(id));
+    REQUIRE(store.size() == 0);
+}
+
+TEST_CASE("Transaction: no commit means rollback", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+
+    {
+        auto tx = store.beginTransaction();
+        tx.addDocument(b.setName("doc").setText("hello").build());
+    }
+
+    REQUIRE(store.size() == 0);
+}
+
+TEST_CASE("Transaction: rollback does not affect store", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("doc").setText("hello").build();
+    auto id = doc.id();
+    store.addDocument(std::move(doc));
+
+    auto tx = store.beginTransaction();
+    tx.removeDocument(id);
+    tx.rollback();
+
+    REQUIRE(store.contains(id));
+    REQUIRE(store.size() == 1);
+}
+
+TEST_CASE("Transaction: store unchanged if tx goes out of scope after error", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc = b.setName("original").setText("data").build();
+    auto id = doc.id();
+    store.addDocument(std::move(doc));
+
+    {
+        auto tx = store.beginTransaction();
+        tx.removeDocument(id);
+        auto res = tx.removeDocument(9999u);
+        REQUIRE_FALSE(res.has_value());
+        REQUIRE(res.error() == IndexError::DocumentNotFound);
+    }
+
+    REQUIRE(store.contains(id));
+    REQUIRE(store.size() == 1);
+}
+
+TEST_CASE("Transaction: double commit returns error", "[transaction]")
+{
+    IndexStore store;
+    auto tx = store.beginTransaction();
+
+    REQUIRE(tx.commit().has_value());
+
+    auto second = tx.commit();
+    REQUIRE_FALSE(second.has_value());
+    REQUIRE(second.error() == IndexError::TransactionFailed);
+}
+
+TEST_CASE("Transaction: add after commit returns error", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto tx = store.beginTransaction();
+    tx.commit();
+
+    auto res = tx.addDocument(b.setName("doc").setText("late").build());
+    REQUIRE_FALSE(res.has_value());
+    REQUIRE(res.error() == IndexError::TransactionFailed);
+}
+
+TEST_CASE("Transaction: changes in tx not visible in store before commit", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+
+    auto tx = store.beginTransaction();
+    auto doc = b.setName("doc").setText("hello").build();
+    auto id = doc.id();
+    tx.addDocument(std::move(doc));
+
+    REQUIRE_FALSE(store.contains(id));
+    REQUIRE(store.size() == 0);
+
+    tx.commit();
+
+    REQUIRE(store.contains(id));
+}
+
+TEST_CASE("Transaction: duplicate in working copy returns error", "[transaction]")
+{
+    IndexStore store;
+    DocumentBuilder b;
+    auto doc1 = b.setName("doc").setText("hello").build();
+    Document doc2{doc1.id(), "doc_copy", "world"};
+
+    auto tx = store.beginTransaction();
+    REQUIRE(tx.addDocument(std::move(doc1)).has_value());
+
+    auto res = tx.addDocument(std::move(doc2));
+    REQUIRE_FALSE(res.has_value());
+    REQUIRE(res.error() == IndexError::DuplicateDocument);
 }

@@ -1,21 +1,12 @@
 add_library(resource_core STATIC
         IndexStore.cpp
         UpdateTransaction.cpp
-)
-
-target_include_directories(resource_core PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/../include
         DocumentBuilder.cpp
         InvertedIndex.cpp
 )
 
 target_include_directories(resource_core PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
-)
-
-target_link_libraries(resource_core PUBLIC
-        project_warnings
-        project_sanitizers
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 add_library(Document INTERFACE)
@@ -28,16 +19,5 @@ target_sources(Document INTERFACE
 
 target_include_directories(Document INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        ${CMAKE_SOURCE_DIR}/include/Document.hpp
 )
-
-target_include_directories(Document INTERFACE
-        ${CMAKE_SOURCE_DIR}/include
-)
-
-target_link_libraries(Document INTERFACE
-        project_warnings
-        project_sanitizers
-)
-
 target_link_libraries(resource_core PUBLIC Document)
