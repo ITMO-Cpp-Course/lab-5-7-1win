@@ -29,7 +29,9 @@ include(CTest)
 enable_testing()
 
 if (ENABLE_SANITIZERS AND NOT WIN32)
-    add_library(project_sanitizers INTERFACE)
+    add_library(project_sanitizers INTERFACE
+            include/IndexStore.hpp
+            include/Result.hpp)
     target_compile_options(project_sanitizers INTERFACE $<$<CONFIG:Debug>:-fsanitize=address -fno-omit-frame-pointer>)
     target_link_options(project_sanitizers INTERFACE    $<$<CONFIG:Debug>:-fsanitize=address>)
 else()
