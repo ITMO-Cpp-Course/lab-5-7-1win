@@ -8,7 +8,7 @@ class IndexStore;
 class UpdateTransaction
 {
   public:
-    explicit UpdateTransaction(IndexStore& store);
+    explicit UpdateTransaction(IndexStore& store, InvertedIndex workingCopy);
 
     UpdateTransaction(const UpdateTransaction&) = delete;
     UpdateTransaction& operator=(const UpdateTransaction&) = delete;
@@ -16,23 +16,22 @@ class UpdateTransaction
     UpdateTransaction(UpdateTransaction&& other) noexcept;
     UpdateTransaction& operator=(UpdateTransaction&&) = delete;
 
-    ~UpdateTransaction() = default;
+    ~UpdateTransaction();
 
     Result<void> addDocument(Document doc);
     Result<void> removeDocument(Document::Id id);
 
     Result<void> commit();
-
     void rollback() noexcept;
 
     [[nodiscard]] bool isCommitted() const noexcept
     {
-        return committed_;
+        return finished_;
     }
 
   private:
     IndexStore& store_;
     InvertedIndex workingCopy_;
 
-    bool committed_ = false;
+    bool finished_ = false;
 };
