@@ -7,7 +7,7 @@ class IndexStore;
 
 class UpdateTransaction
 {
-public:
+  public:
     explicit UpdateTransaction(IndexStore& store, InvertedIndex workingCopy);
 
     UpdateTransaction(const UpdateTransaction&) = delete;
@@ -24,9 +24,12 @@ public:
     Result<void> commit();
     void rollback() noexcept;
 
-    [[nodiscard]] bool isCommitted() const noexcept { return finished_; }
+    [[nodiscard]] bool isCommitted() const noexcept
+    {
+        return finished_;
+    }
 
-private:
+  private:
     IndexStore& store_;
     InvertedIndex workingCopy_;
 

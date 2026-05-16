@@ -2,15 +2,12 @@
 #include "IndexStore.hpp"
 
 UpdateTransaction::UpdateTransaction(IndexStore& store, InvertedIndex workingCopy)
-    : store_(store)
-    , workingCopy_(std::move(workingCopy))
+    : store_(store), workingCopy_(std::move(workingCopy))
 {
 }
 
 UpdateTransaction::UpdateTransaction(UpdateTransaction&& other) noexcept
-    : store_(other.store_)
-    , workingCopy_(std::move(other.workingCopy_))
-    , finished_(other.finished_)
+    : store_(other.store_), workingCopy_(std::move(other.workingCopy_)), finished_(other.finished_)
 {
     other.finished_ = true;
 }

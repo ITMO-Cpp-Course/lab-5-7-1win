@@ -1,7 +1,7 @@
-#include <catch2/catch_all.hpp>
+#include "DocumentBuilder.hpp"
 #include "IndexStore.hpp"
 #include "UpdateTransaction.hpp"
-#include "DocumentBuilder.hpp"
+#include <catch2/catch_all.hpp>
 
 TEST_CASE("IndexStore: add and contains", "[store]")
 {
@@ -111,7 +111,6 @@ TEST_CASE("Transaction: commit remove applies to store", "[transaction]")
     REQUIRE(store.size().value() == 0);
 }
 
-
 TEST_CASE("Transaction: no commit means rollback", "[transaction]")
 {
     IndexStore store;
@@ -211,7 +210,6 @@ TEST_CASE("Transaction: add after commit returns TransactionAlreadyFinished", "[
     REQUIRE(res.error() == IndexError::TransactionAlreadyFinished);
 }
 
-
 TEST_CASE("Transaction: two parallel transactions are forbidden", "[transaction]")
 {
     IndexStore store;
@@ -276,7 +274,6 @@ TEST_CASE("Transaction: new transaction allowed after destructor rollback", "[tr
     auto tx2Result = store.beginTransaction();
     REQUIRE(tx2Result.has_value());
 }
-
 
 TEST_CASE("Transaction: changes not visible before commit", "[transaction]")
 {

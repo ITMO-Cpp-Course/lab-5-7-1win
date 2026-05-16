@@ -3,7 +3,8 @@
 
 Result<void> IndexStore::addDocument(Document doc)
 {
-    if (hasActiveTransaction_) {
+    if (hasActiveTransaction_)
+    {
         return std::unexpected(IndexError::ActiveTransactionExists);
     }
 
@@ -16,7 +17,8 @@ Result<void> IndexStore::addDocument(Document doc)
 
 Result<void> IndexStore::removeDocument(Document::Id id)
 {
-    if (hasActiveTransaction_) {
+    if (hasActiveTransaction_)
+    {
         return std::unexpected(IndexError::ActiveTransactionExists);
     }
     if (!index_.removeDocument(id))

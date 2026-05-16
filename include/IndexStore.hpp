@@ -7,7 +7,7 @@ class UpdateTransaction;
 
 class IndexStore
 {
-public:
+  public:
     IndexStore() = default;
 
     IndexStore(const IndexStore&) = delete;
@@ -27,7 +27,7 @@ public:
 
     void releaseTransaction() noexcept;
 
-private:
+  private:
     InvertedIndex index_;
 
     bool hasActiveTransaction_ = false;
