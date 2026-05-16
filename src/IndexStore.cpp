@@ -3,6 +3,10 @@
 
 Result<void> IndexStore::addDocument(Document doc)
 {
+    if (hasActiveTransaction_) {
+        return std::unexpected(IndexError::ActiveTransactionExists);
+    }
+
     if (index_.contains(doc.id()))
         return std::unexpected(IndexError::DuplicateDocument);
 
@@ -12,33 +16,53 @@ Result<void> IndexStore::addDocument(Document doc)
 
 Result<void> IndexStore::removeDocument(Document::Id id)
 {
+    if (hasActiveTransaction_) {
+        return std::unexpected(IndexError::ActiveTransactionExists);
+    }
     if (!index_.removeDocument(id))
         return std::unexpected(IndexError::DocumentNotFound);
 
     return {};
 }
 
-std::vector<SearchResult> IndexStore::search(const std::string& word) const
+Result<std::vector<SearchResult>> IndexStore::search(const std::string& word) const
 {
     return index_.search(word);
 }
 
-std::size_t IndexStore::wordCount(Document::Id id, const std::string& word) const
+Result<std::size_t> IndexStore::wordCount(Document::Id id, const std::string& word) const
 {
     return index_.wordCount(id, word);
 }
 
-std::size_t IndexStore::size() const noexcept
+Result<std::size_t> IndexStore::size() const noexcept
 {
     return index_.size();
 }
 
-bool IndexStore::contains(Document::Id id) const noexcept
+Result<bool> IndexStore::contains(Document::Id id) const noexcept
 {
     return index_.contains(id);
 }
 
-UpdateTransaction IndexStore::beginTransaction()
+Result<UpdateTransaction> IndexStore::beginTransaction()
 {
-    return UpdateTransaction{*this};
+    if (hasActiveTransaction_)
+        return std::unexpected(IndexError::ActiveTransactionExists);
+
+    try
+    {
+        InvertedIndex copy = index_;
+        hasActiveTransaction_ = true;
+        return UpdateTransaction{*this, std::move(copy)};
+    }
+    catch (...)
+    {
+        return std::unexpected(IndexError::TransactionCopyFailed);
+    }
+}
+
+void IndexStore::releaseTransaction() noexcept
+{
+    hasActiveTransaction_ = false;
 }

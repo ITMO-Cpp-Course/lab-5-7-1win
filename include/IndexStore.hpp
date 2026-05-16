@@ -7,7 +7,7 @@ class UpdateTransaction;
 
 class IndexStore
 {
-  public:
+public:
     IndexStore() = default;
 
     IndexStore(const IndexStore&) = delete;
@@ -16,16 +16,21 @@ class IndexStore
     IndexStore& operator=(IndexStore&&) = default;
 
     Result<void> addDocument(Document doc);
-
     Result<void> removeDocument(Document::Id id);
 
-    [[nodiscard]] std::vector<SearchResult> search(const std::string& word) const;
-    [[nodiscard]] std::size_t wordCount(Document::Id id, const std::string& word) const;
-    [[nodiscard]] std::size_t size() const noexcept;
-    [[nodiscard]] bool contains(Document::Id id) const noexcept;
-    [[nodiscard]] UpdateTransaction beginTransaction();
+    [[nodiscard]] Result<std::vector<SearchResult>> search(const std::string& word) const;
+    [[nodiscard]] Result<std::size_t> wordCount(Document::Id id, const std::string& word) const;
+    [[nodiscard]] Result<std::size_t> size() const noexcept;
+    [[nodiscard]] Result<bool> contains(Document::Id id) const noexcept;
 
-  private:
+    [[nodiscard]] Result<UpdateTransaction> beginTransaction();
+
+    void releaseTransaction() noexcept;
+
+private:
     InvertedIndex index_;
+
+    bool hasActiveTransaction_ = false;
+
     friend class UpdateTransaction;
 };
